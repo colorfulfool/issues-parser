@@ -9,24 +9,50 @@ import (
 	"strings"
 )
 
-func addIssue(issues map[string][]string, line string, lastHeading *string) {
-	re := regexp.MustCompile(`\((http.+)#.+\)$`)
-	key := re.FindStringSubmatch(line)[1]
-	*lastHeading = key
-	if len(issues[key]) > 0 {
-		issues[key][0] = line
-	} else {
-		issues[key] = append(issues[key], line)
-	}
+type issue struct {
+	key   string
+	title string
+	items []string
 }
 
-func hasTodo(issues map[string][]string, key string, line string) bool {
-	for _, item := range issues[key] {
-		if item[6:] == line[6:] {
-			return true
+func addIssue(issues *[]issue, title string, lastKey *string) {
+	re := regexp.MustCompile(`\((http.+)#.+\)$`)
+	key := re.FindStringSubmatch(title)[1]
+
+	*lastKey = key
+
+	var i = 0
+	for ; i < len(*issues); i++ {
+		if (*issues)[i].key == key {
+			(*issues)[i].title = title
+			return
 		}
 	}
-	return false
+	*issues = append(*issues, issue{title: title, key: key})
+}
+
+func addTodo(issues *[]issue, key string, line string) {
+	var i int
+
+	var found = false
+	for i = 0; i < len(*issues); i++ {
+		if (*issues)[i].key == key {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		panic("tried to add todo to nonexistent issue")
+	}
+
+	var issue = (*issues)[i]
+	for j := 0; j < len(issue.items); j++ {
+		if issue.items[j][6:] == line[6:] {
+			return
+		}
+	}
+	(*issues)[i].items = append(issue.items, line)
 }
 
 func main() {
@@ -36,16 +62,16 @@ func main() {
 	}
 	defer file.Close()
 
-	issues := make(map[string][]string)
+	var issues []issue
 
-	var lastHeading string
+	var lastKey string
 	fileScanner := bufio.NewScanner(file)
 	for fileScanner.Scan() {
 		line := fileScanner.Text()
 		if strings.HasPrefix(line, "## ") {
-			addIssue(issues, line, &lastHeading)
+			addIssue(&issues, line, &lastKey)
 		} else if strings.HasPrefix(line, "- [") {
-			issues[lastHeading] = append(issues[lastHeading], line)
+			addTodo(&issues, lastKey, line)
 		}
 	}
 
@@ -57,21 +83,16 @@ func main() {
 	for inputScanner.Scan() {
 		line := inputScanner.Text()
 		if strings.HasPrefix(line, "## ") {
-			addIssue(issues, line, &lastHeading)
+			addIssue(&issues, line, &lastKey)
 		} else if strings.HasPrefix(line, "- [") {
-			if !hasTodo(issues, lastHeading, line) {
-				issues[lastHeading] = append(issues[lastHeading], line)
-			}
+			addTodo(&issues, lastKey, line)
 		}
 	}
 
-	for _, value := range issues {
-		for index, item := range value {
-			if index == 0 {
-				fmt.Println(strings.Replace(item, "Redesign: ", "", 1))
-			} else {
-				fmt.Println(item)
-			}
+	for _, issue := range issues {
+		fmt.Println(strings.Replace(issue.title, "Redesign: ", "", 1))
+		for _, item := range issue.items {
+			fmt.Println(item)
 		}
 		fmt.Println("")
 	}
