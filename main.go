@@ -9,7 +9,7 @@ import (
 )
 
 func addIssue(issues map[string][]string, line string, lastHeading *string) {
-	cleanHeading := strings.Split(line[3:], "(")[0]
+	cleanHeading := strings.TrimSpace(strings.Split(line[3:], "(")[0])
 	*lastHeading = cleanHeading
 	if len(issues[cleanHeading]) > 0 {
 		issues[cleanHeading][0] = line
@@ -64,8 +64,12 @@ func main() {
 	}
 
 	for _, value := range issues {
-		for _, item := range value {
-			fmt.Println(item)
+		for index, item := range value {
+			if index == 0 {
+				fmt.Println(strings.Replace(item, "Redesign: ", "", 1))
+			} else {
+				fmt.Println(item)
+			}
 		}
 		fmt.Println("")
 	}
