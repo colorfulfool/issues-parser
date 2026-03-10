@@ -5,16 +5,18 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"regexp"
 	"strings"
 )
 
 func addIssue(issues map[string][]string, line string, lastHeading *string) {
-	cleanHeading := strings.TrimSpace(strings.Split(line[3:], "(")[0])
-	*lastHeading = cleanHeading
-	if len(issues[cleanHeading]) > 0 {
-		issues[cleanHeading][0] = line
+	re := regexp.MustCompile(`\((http.+)#.+\)$`)
+	key := re.FindStringSubmatch(line)[1]
+	*lastHeading = key
+	if len(issues[key]) > 0 {
+		issues[key][0] = line
 	} else {
-		issues[cleanHeading] = append(issues[cleanHeading], line)
+		issues[key] = append(issues[key], line)
 	}
 }
 
