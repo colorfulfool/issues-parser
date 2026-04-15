@@ -31,6 +31,12 @@ func addIssue(issues *[]issue, title string, lastKey *string) {
 	*issues = append(*issues, issue{title: title, key: key})
 }
 
+var parenPrefix = regexp.MustCompile(`^\([^)]+\)\s*`)
+
+func stripParenPrefix(s string) string {
+	return parenPrefix.ReplaceAllString(s, "")
+}
+
 func addTodo(issues *[]issue, key string, line string) {
 	var i int
 
@@ -46,9 +52,13 @@ func addTodo(issues *[]issue, key string, line string) {
 		panic("tried to add todo to nonexistent issue")
 	}
 
+	newText := stripParenPrefix(line[6:])
 	var issue = (*issues)[i]
 	for j := 0; j < len(issue.items); j++ {
-		if issue.items[j][6:] == line[6:] {
+		if stripParenPrefix(issue.items[j][6:]) == newText {
+			if !parenPrefix.MatchString(issue.items[j][6:]) && issue.items[j][3] != 'x' {
+				(*issues)[i].items[j] = line
+			}
 			return
 		}
 	}
